@@ -93,8 +93,6 @@ function! neomake#statusline#QflistStatus(...) abort
 endfunction
 
 
-let s:cache = {}
-
 function! neomake#statusline#get_counts(bufnr) abort
     return [get(s:loclist_counts, a:bufnr, {}), s:qflist_counts]
 endfunction
@@ -186,26 +184,26 @@ function! neomake#statusline#clear_cache(bufnr) abort
     call s:clear_cache(a:bufnr)
 endfunction
 
-function! s:clear_cache(...) abort
-    let bufnr = a:0 ? a:1 : g:neomake_hook_context.jobinfo.bufnr
-    if has_key(s:cache, bufnr)
-        unlet s:cache[bufnr]
+let s:cache = {}
+function! s:clear_cache(bufnr) abort
+    if has_key(s:cache, a:bufnr)
+        unlet s:cache[a:bufnr]
     endif
 endfunction
 
 augroup neomake_statusline
     autocmd!
-    autocmd User NeomakeJobStarted,NeomakeJobFinished call s:clear_cache()
+    autocmd User NeomakeJobStarted,NeomakeJobFinished call s:clear_cache(g:neomake_hook_context.jobinfo.bufnr)
     autocmd BufWipeout * call s:clear_cache(expand('<abuf>'))
 augroup END
 
 function! neomake#statusline#get(bufnr, options) abort
-    if has_key(s:cache, a:bufnr)
-        " echo 'cached, '.strftime('%c')
-        return s:cache[a:bufnr]
+    let cache_key = a:bufnr . string(a:options)
+    if has_key(s:cache, cache_key)
+        return s:cache[cache_key]
     endif
-    let bufnr = +a:bufnr
 
+    let bufnr = +a:bufnr
     let r = ''
     let [disabled, source] = neomake#config#get_with_source('disabled', -1, {'bufnr': bufnr})
     if disabled != -1
@@ -222,6 +220,6 @@ function! neomake#statusline#get(bufnr, options) abort
     endif
     let r .= status
 
-    let s:cache[bufnr] = r
+    let s:cache[cache_key] = r
     return r
 endfunction
